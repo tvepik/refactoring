@@ -1,0 +1,12 @@
+{
+    "name": "task/refactoring",
+    "description": "Refactoring",
+    "autoload": {
+        "psr-4": {
+            "Refactoring\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">= 8.3.0"
+    }
+}
