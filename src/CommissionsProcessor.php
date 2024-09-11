@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace Refactoring;
 
+use Exception;
+use JsonException;
+use Refactoring\Exceptions\HttpRequestException;
 use Refactoring\Providers\BINInfo\BINInfoProvider;
 use Refactoring\Providers\CurrencyRates\CurrencyRatesProvider;
-use Exception;
 
 class CommissionsProcessor
 {
@@ -35,14 +37,10 @@ class CommissionsProcessor
 
                 $commission = $fixedPart * $this->getVariablePart($bin);
                 $commission = ceil($commission * 100) / 100; //is rounded up to cents
-                var_dump($commission); //we are not doing anything with the result so far
-            } catch (\ErrorException $e) {
-                if (str_contains($e->getMessage(), '429 Too Many Requests')) {
-                    //@todo should be marked as failed, and next time we'll try to calculate commissions for this transaction again
-                    echo 'LOG: Calculation failed due to rate limiting. ' . json_encode($transaction) . "\n";
-                } else {
-                    throw $e;
-                }
+                echo $commission . "\n"; //we are not doing anything with the result so far
+            } catch (JsonException|HttpRequestException $e) {
+                //@todo should be marked as failed, and next time we'll try to calculate commissions for this transaction again
+                echo 'LOG: Calculation failed. Reason: ' . $e->getMessage() . '. Transaction data: ' . json_encode($transaction) . "\n";
             }
         }
     }
@@ -55,7 +53,7 @@ class CommissionsProcessor
             ? self::COMMISSION_RATE_EU : self::COMMISSION_RATE_NON_EU;
     }
 
-    private function getTransactions(string $filename): \Generator
+    protected function getTransactions(string $filename): \Generator
     {
         if (!file_exists($filename) || !is_readable($filename)) {
             throw new Exception('File does not exist or cannot be read: ' . $filename);
@@ -73,7 +71,7 @@ class CommissionsProcessor
         fclose($file);
     }
 
-    private function extractData(string $json): array
+    protected function extractData(string $json): array
     {
         $data = json_decode($json, true);
         if (!$data) {
